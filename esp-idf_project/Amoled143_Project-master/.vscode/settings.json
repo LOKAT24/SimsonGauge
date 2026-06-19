@@ -1,0 +1,26 @@
+{
+  "C_Cpp.intelliSenseEngine": "default",
+  "idf.openOcdConfigs": [
+    "board/esp32s3-builtin.cfg"
+  ],
+  "files.associations": {
+    "esp_log.h": "c",
+    "freertos.h": "c",
+    "freertosconfig.h": "c",
+    "projdefs.h": "c",
+    "portable.h": "c",
+    "task.h": "c",
+    "esp_rom_sys.h": "c",
+    "esp_log_level.h": "c",
+    "lv_demos.h": "c",
+    "touch_bsp.h": "c",
+    "i2c.h": "c",
+    "bsp.h": "c",
+    "esp_err.h": "c"
+  },
+  "idf.port": "/dev/ttyACM0",
+  "idf.flashType": "UART",
+  "idf.espIdfPath": "/home/adamczyk/esp/esp-idf-v5.4.1",
+  "idf.toolsPath": "/home/adamczyk/.espressif",
+  "idf.pythonInstallPath": "/usr/bin/python3"
+}

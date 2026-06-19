@@ -1,0 +1,14 @@
+screens/ui_HeloScreen.c
+screens/ui_MainScreen.c
+screens/ui_ConfigScreen.c
+screens/ui_ConfigScreen1.c
+ui.c
+components/ui_comp_hook.c
+ui_helpers.c
+ui_events.c
+images/ui_img_ifa_logo466_blackbg_png.c
+images/ui_img_tlo_nospeed_dither2_png.c
+images/ui_img_wskaznik_crop_png.c
+images/ui_img_triangle_small_png.c
+fonts/ui_font_UbuntumediumItalic84.c
+fonts/ui_font_UbuntuMediumItalic66.c

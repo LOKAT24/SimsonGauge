@@ -1,0 +1,13 @@
+# Target labels
+ bootloader
+# Source files and their labels
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/CMakeFiles/bootloader
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/CMakeFiles/bootloader.rule
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/CMakeFiles/bootloader-complete.rule
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+/home/adamczyk/Dokumenty/ESP_IDF_PROJECTS/Amoled143_Project/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
