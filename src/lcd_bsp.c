@@ -117,16 +117,18 @@ void lcd_lvgl_Init(void)
   lvgl_mux = xSemaphoreCreateMutex(); //mutex semaphores
   assert(lvgl_mux);
   xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
-  if (example_lvgl_lock(-1)) 
-  {   
-    lv_demo_widgets();      /* A widgets example */
-    //lv_demo_music();        /* A modern, smartphone-like music player demo. */
-    //lv_demo_stress();       /* A stress test for LVGL. */
-    //lv_demo_benchmark();    /* A demo to measure the performance of LVGL or to compare different settings. */
+  /* The application builds the UI itself (see main.cpp) after locking LVGL
+   * with lvgl_lock()/lvgl_unlock(). */
+}
 
-    // Release the mutex
-    example_lvgl_unlock();
-  }
+/* Public wrappers around the internal LVGL mutex. */
+bool lvgl_lock(int timeout_ms)
+{
+  return example_lvgl_lock(timeout_ms);
+}
+void lvgl_unlock(void)
+{
+  example_lvgl_unlock();
 }
 
 static bool example_lvgl_lock(int timeout_ms)

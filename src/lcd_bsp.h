@@ -12,7 +12,6 @@
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_commands.h"
 #include "lvgl.h"
-#include "demos/lv_demos.h"
 #include "esp_check.h"
 #include "driver/gpio.h"
 
@@ -29,6 +28,11 @@ static void example_lvgl_unlock(void);
 static bool example_lvgl_lock(int timeout_ms);
 void lcd_lvgl_Init(void);
 static void example_lvgl_touch_cb(lv_indev_drv_t *drv, lv_indev_data_t *data);
+
+/* Public LVGL mutex helpers so the application (main) can safely touch LVGL
+ * from outside the LVGL task (e.g. to build the UI after init). */
+bool lvgl_lock(int timeout_ms);
+void lvgl_unlock(void);
 #ifdef __cplusplus
 }
 #endif

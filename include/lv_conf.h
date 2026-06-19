@@ -58,6 +58,7 @@
 #define LV_FONT_MONTSERRAT_12 1
 #define LV_FONT_MONTSERRAT_14 1
 #define LV_FONT_MONTSERRAT_16 1
+#define LV_FONT_MONTSERRAT_18 1
 #define LV_FONT_MONTSERRAT_24 1
 #define LV_FONT_MONTSERRAT_48 1
 
@@ -65,11 +66,8 @@
  *   DEMOS
  *====================*/
 
-/* The example calls lv_demo_widgets(). The other demos in lcd_bsp.c
- * (music/stress/benchmark) are commented out; enable here if you uncomment. */
-#define LV_USE_DEMO_WIDGETS 1
-/* #define LV_USE_DEMO_MUSIC     1 */
-/* #define LV_USE_DEMO_STRESS    1 */
-/* #define LV_USE_DEMO_BENCHMARK 1 */
+/* No LVGL built-in demo is used anymore; the UI comes from SquareLine Studio
+ * (see src/ui/). Leave the demos disabled. */
+#define LV_USE_DEMO_WIDGETS 0
 
 #endif /* LV_CONF_H */
