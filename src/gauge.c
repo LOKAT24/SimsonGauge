@@ -5,10 +5,18 @@
 #include "mcpwm_frequency.h"
 
 #include <stdint.h>
-#include <stdlib.h>
 
 #define INTRO_DELAY_MS      8500   // wait before the first reading (lets the intro play)
 #define UPDATE_PERIOD_MS    50     // gauge refresh period
+
+// Multiplier (frequency * multiplier = RPM). Owned here, set from the config
+// screen which loads/persists it via settings.
+static double s_multiplier = 1.0;
+
+void gauge_set_multiplier(double m)
+{
+    s_multiplier = m;
+}
 
 /**
  * Convert RPM to the needle angle using a fixed-point (2^32) Horner polynomial.
@@ -31,19 +39,7 @@ static int32_t rpm_to_angle(int32_t rpm)
 static void gauge_update_cb(lv_timer_t * timer)
 {
     double frequency = mcpwm_freq_get_hz();
-
-    // multiplier comes from the config text area
-    const char * text = lv_textarea_get_text(ui_TextArea2);
-    double multiplier = 1.0;
-    if (text && text[0] != '\0') {
-        char * endptr;
-        double m = strtod(text, &endptr);
-        if (endptr != text && *endptr == '\0') {
-            multiplier = m;
-        }
-    }
-
-    int32_t angle = rpm_to_angle((int32_t)(frequency * multiplier));
+    int32_t angle = rpm_to_angle((int32_t)(frequency * s_multiplier));
     lv_img_set_angle(ui_wskaznik, angle);
 }
 

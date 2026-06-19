@@ -10,7 +10,7 @@
 
 #define ENABLE_TEST_SIGNAL 1
 #define TEST_OUT_GPIO      2
-#define TEST_SIGNAL_HZ     1000
+#define TEST_SIGNAL_HZ     2000
 
 void test_signal_start(void)
 {

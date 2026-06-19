@@ -11,6 +11,7 @@
 #include "esp_lcd_panel_vendor.h"
 #include "esp_lcd_panel_ops.h"
 #include "esp_lcd_panel_commands.h"
+#include "esp_lcd_panel_commands.h"
 #include "lvgl.h"
 #include "esp_check.h"
 #include "driver/gpio.h"
@@ -18,6 +19,8 @@
 #ifdef __cplusplus
 extern "C" {
 #endif 
+
+void lcd_set_brightness(uint8_t brightness);
 
 static bool example_notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx);
 static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map);

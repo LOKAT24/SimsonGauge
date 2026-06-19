@@ -70,4 +70,9 @@
  * (see src/ui/). Leave the demos disabled. */
 #define LV_USE_DEMO_WIDGETS 0
 
+/*====================
+ *   SPRINTF
+ *====================*/
+#define LV_SPRINTF_USE_FLOAT 1
+
 #endif /* LV_CONF_H */

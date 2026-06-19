@@ -15,6 +15,9 @@ extern "C" {
  */
 void gauge_start(void);
 
+/** Set the RPM multiplier used by the gauge (frequency * multiplier = RPM). */
+void gauge_set_multiplier(double m);
+
 #ifdef __cplusplus
 }
 #endif

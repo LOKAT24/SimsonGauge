@@ -11,6 +11,8 @@ static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define CO5300_ID 0xff
 static uint8_t READ_LCD_ID = 0x00; 
 
+static esp_lcd_panel_io_handle_t s_io_handle = NULL;
+
 static const sh8601_lcd_init_cmd_t sh8601_lcd_init_cmds[] = 
 {
   {0x11, (uint8_t []){0x00}, 0, 120},
@@ -64,6 +66,8 @@ void lcd_lvgl_Init(void)
     },
   };
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
+  s_io_handle = io_handle;
+
   esp_lcd_panel_handle_t panel_handle = NULL;
   const esp_lcd_panel_dev_config_t panel_config = 
   {
@@ -119,6 +123,17 @@ void lcd_lvgl_Init(void)
   xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
   /* The application builds the UI itself (see main.cpp) after locking LVGL
    * with lvgl_lock()/lvgl_unlock(). */
+}
+
+void lcd_set_brightness(uint8_t brightness)
+{
+  if (s_io_handle) {
+    int lcd_cmd = LCD_CMD_WRDISBV;
+    lcd_cmd &= 0xff;
+    lcd_cmd <<= 8;
+    lcd_cmd |= 0x02 << 24; // LCD_OPCODE_WRITE_CMD for QSPI
+    esp_lcd_panel_io_tx_param(s_io_handle, lcd_cmd, (uint8_t[]){brightness}, 1);
+  }
 }
 
 /* Public wrappers around the internal LVGL mutex. */
