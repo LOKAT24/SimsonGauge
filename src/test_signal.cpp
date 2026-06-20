@@ -10,12 +10,14 @@
 
 #define ENABLE_TEST_SIGNAL 1
 #define TEST_OUT_GPIO      2
-#define TEST_SIGNAL_HZ     2000
+#define TEST_SIGNAL_HZ     3500
 
 void test_signal_start(void)
 {
 #if ENABLE_TEST_SIGNAL
-    ledcAttach(TEST_OUT_GPIO, TEST_SIGNAL_HZ, 10);  // 10-bit resolution
-    ledcWrite(TEST_OUT_GPIO, 512);                  // 512/1023 ~= 50% duty
+    // W najnowszym rdzeniu Arduino (v3) preferowana jest funkcja tone(), 
+    // ew. stare ledcAttach/ledcWrite. Wracamy do prostej stałej wartości.
+    ledcAttach(TEST_OUT_GPIO, TEST_SIGNAL_HZ, 10);
+    ledcWrite(TEST_OUT_GPIO, 512);
 #endif
 }

@@ -15,7 +15,12 @@
 #define EXAMPLE_PIN_NUM_LCD_RST           21
 #define EXAMPLE_PIN_NUM_BK_LIGHT          (-1)
 
-#define EXAMPLE_LVGL_BUF_HEIGHT        (EXAMPLE_LCD_V_RES / 4)
+// Two LVGL draw buffers live in internal DMA RAM (see lcd_lvgl_Init). At V_RES/4
+// they take ~216 KB, leaving too little internal RAM for the WiFi driver: starting
+// the OTA SoftAP then crashes in ieee80211_hostap_attach (LoadProhibited on a
+// failed allocation). V_RES/10 (~86 KB total) frees ~130 KB for WiFi; the image is
+// unchanged, only flushed in more, smaller chunks (negligible for this UI).
+#define EXAMPLE_LVGL_BUF_HEIGHT        (EXAMPLE_LCD_V_RES / 10)
 #define EXAMPLE_LVGL_TICK_PERIOD_MS    2                          //Timer time
 #define EXAMPLE_LVGL_TASK_MAX_DELAY_MS 500                        //LVGL Indicates the maximum time for a task to run
 #define EXAMPLE_LVGL_TASK_MIN_DELAY_MS 1                          //LVGL Minimum time to run a task

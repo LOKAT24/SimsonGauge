@@ -2,7 +2,10 @@
 
 #include "gauge.h"
 #include "ui.h"
+#include "ui_SimsonScreen.h"
+#include "settings.h"
 #include "mcpwm_frequency.h"
+#include "mcpwm_speed.h"
 
 #include <stdint.h>
 
@@ -12,10 +15,17 @@
 // Multiplier (frequency * multiplier = RPM). Owned here, set from the config
 // screen which loads/persists it via settings.
 static double s_multiplier = 1.0;
+static float s_speed_mult = 1.0;
+bool g_simson_intro_done = false;
 
 void gauge_set_multiplier(double m)
 {
     s_multiplier = m;
+}
+
+void gauge_set_speed_multiplier(float sm)
+{
+    s_speed_mult = sm;
 }
 
 /**
@@ -35,12 +45,27 @@ static int32_t rpm_to_angle(int32_t rpm)
     return (int32_t)((y_scaled + (1LL << (SCALE_BITS - 1))) >> SCALE_BITS);
 }
 
-/** Periodic update: read frequency, apply the multiplier, rotate the needle. */
 static void gauge_update_cb(lv_timer_t * timer)
 {
     double frequency = mcpwm_freq_get_hz();
-    int32_t angle = rpm_to_angle((int32_t)(frequency * s_multiplier));
-    lv_img_set_angle(ui_wskaznik, angle);
+    int32_t rpm = (int32_t)(frequency * s_multiplier);
+    
+    double speed_freq = mcpwm_speed_get_hz();
+    // Przeliczenie czestotliwosci predkosci
+    int32_t speed = (int32_t)(speed_freq * s_speed_mult); 
+    char speed_str[16];
+    snprintf(speed_str, sizeof(speed_str), "%d", (int)speed);
+    
+    int theme = settings_get_theme();
+    if (theme == 0) {
+        int32_t angle = rpm_to_angle(rpm);
+        lv_img_set_angle(ui_wskaznik, angle);
+        lv_label_set_text(ui_SpeedLabel, speed_str);
+    } else { // theme 1 (day) / 2 (night): Simson classic
+        if (!g_simson_intro_done) return;
+        if (rpm > 7000) rpm = 7000;
+        simson_set_values(rpm, (int)speed);
+    }
 }
 
 /** One-shot: after the intro delay, start the periodic gauge update. */
@@ -51,6 +76,10 @@ static void gauge_start_cb(lv_timer_t * timer)
 
 void gauge_start(void)
 {
-    lv_timer_t * one_shot = lv_timer_create(gauge_start_cb, INTRO_DELAY_MS, NULL);
-    lv_timer_set_repeat_count(one_shot, 1);
+    if (settings_get_theme() == 0) {
+        lv_timer_t * one_shot = lv_timer_create(gauge_start_cb, INTRO_DELAY_MS, NULL);
+        lv_timer_set_repeat_count(one_shot, 1);
+    } else {
+        lv_timer_create(gauge_update_cb, UPDATE_PERIOD_MS, NULL);
+    }
 }

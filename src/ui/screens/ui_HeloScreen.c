@@ -4,6 +4,8 @@
 // Project name: OBD_DISPLAY
 
 #include "../ui.h"
+#include "../../settings.h"
+#include "../../ui_SimsonScreen.h"
 
 lv_obj_t * ui_HeloScreen = NULL;
 lv_obj_t * ui_Image1 = NULL;
@@ -13,10 +15,21 @@ void ui_event_HeloScreen(lv_event_t * e)
     lv_event_code_t event_code = lv_event_get_code(e);
 
     if(event_code == LV_EVENT_SCREEN_LOADED) {
-        _ui_screen_change(&ui_MainScreen, LV_SCR_LOAD_ANIM_FADE_ON, 500, 3000, &ui_MainScreen_screen_init);
+        int theme = settings_get_theme();
+        if (theme == 1) {
+            _ui_screen_change(&ui_SimsonScreen, LV_SCR_LOAD_ANIM_FADE_ON, 500, 3000, &ui_SimsonScreen_screen_init);
+        } else if (theme == 2) {
+            // ui_SimsonScreen_screen_init() builds both day and night variants.
+            _ui_screen_change(&ui_SimsonNightScreen, LV_SCR_LOAD_ANIM_FADE_ON, 500, 3000, &ui_SimsonScreen_screen_init);
+        } else {
+            _ui_screen_change(&ui_MainScreen, LV_SCR_LOAD_ANIM_FADE_ON, 500, 3000, &ui_MainScreen_screen_init);
+        }
     }
     if(event_code == LV_EVENT_SCREEN_UNLOADED) {
-        gauge_Animation(ui_wskaznik, 500);
+        int theme = settings_get_theme();
+        if (theme == 0) {
+            gauge_Animation(ui_wskaznik, 500);
+        }
     }
 }
 

@@ -14,6 +14,7 @@
 #include "gauge.h"
 #include "ota.h"
 #include "lcd_bsp.h"
+#include "ui_SimsonScreen.h"
 
 // LVGL's LV_PART_* | LV_STATE_* macros mix two enums; in C++ that triggers a
 // deprecation warning on every style call. The generated UI (.c) files don't
@@ -34,8 +35,8 @@ static lv_obj_t * theme_screen(int idx)
 {
     switch (idx) {
         case 0: return ui_MainScreen;            // NFS (current)
-        // case 1: return ui_SimsonScreen;       // TODO
-        // case 2: return ui_SimsonNightScreen;  // TODO
+        case 1: return ui_SimsonScreen;          // Simson Clasic (day)
+        case 2: return ui_SimsonNightScreen;     // Simson Clasic Night
         default: return NULL;                    // not implemented yet
     }
 }
@@ -52,10 +53,12 @@ static lv_obj_t * theme_screen(int idx)
 static lv_obj_t * s_config_scr  = NULL;
 static lv_obj_t * s_active_main = NULL;   // current theme's main screen
 static lv_obj_t * s_mult_label  = NULL;
+static lv_obj_t * s_smult_label = NULL;
 static lv_obj_t * s_theme_label = NULL;
 static lv_obj_t * s_bright_label = NULL;
 
-static float s_mult     = 1.0f;
+static float s_mult      = 1.0f;
+static float s_smult     = 1.0f;
 static int   s_theme_idx = 0;
 static int   s_bright    = 100;
 
@@ -81,7 +84,6 @@ static void mult_minus_cb(lv_event_t * e)
     switch (lv_event_get_code(e)) {
         case LV_EVENT_SHORT_CLICKED:        mult_change(-MULT_STEP_TAP);  break;
         case LV_EVENT_LONG_PRESSED_REPEAT:  mult_change(-MULT_STEP_HOLD); break;
-        case LV_EVENT_RELEASED:             settings_set_multiplier(s_mult); break;
         default: break;
     }
 }
@@ -91,7 +93,41 @@ static void mult_plus_cb(lv_event_t * e)
     switch (lv_event_get_code(e)) {
         case LV_EVENT_SHORT_CLICKED:        mult_change(+MULT_STEP_TAP);  break;
         case LV_EVENT_LONG_PRESSED_REPEAT:  mult_change(+MULT_STEP_HOLD); break;
-        case LV_EVENT_RELEASED:             settings_set_multiplier(s_mult); break;
+        default: break;
+    }
+}
+
+// ----------------------------------------------------------------------------
+// Speed Multiplier
+// ----------------------------------------------------------------------------
+static void smult_refresh_label(void)
+{
+    lv_label_set_text_fmt(s_smult_label, "%.1f", s_smult);
+}
+
+static void smult_change(float delta)
+{
+    s_smult += delta;
+    if (s_smult < MULT_MIN) s_smult = MULT_MIN;
+    if (s_smult > MULT_MAX) s_smult = MULT_MAX;
+    smult_refresh_label();
+    gauge_set_speed_multiplier(s_smult);
+}
+
+static void smult_minus_cb(lv_event_t * e)
+{
+    switch (lv_event_get_code(e)) {
+        case LV_EVENT_SHORT_CLICKED:        smult_change(-MULT_STEP_TAP);  break;
+        case LV_EVENT_LONG_PRESSED_REPEAT:  smult_change(-MULT_STEP_HOLD); break;
+        default: break;
+    }
+}
+
+static void smult_plus_cb(lv_event_t * e)
+{
+    switch (lv_event_get_code(e)) {
+        case LV_EVENT_SHORT_CLICKED:        smult_change(+MULT_STEP_TAP);  break;
+        case LV_EVENT_LONG_PRESSED_REPEAT:  smult_change(+MULT_STEP_HOLD); break;
         default: break;
     }
 }
@@ -120,9 +156,6 @@ static void bright_minus_cb(lv_event_t * e)
         case LV_EVENT_LONG_PRESSED_REPEAT:
             bright_change(-10);
             break;
-        case LV_EVENT_RELEASED:
-            settings_set_brightness(s_bright);
-            break;
         default: break;
     }
 }
@@ -133,9 +166,6 @@ static void bright_plus_cb(lv_event_t * e)
         case LV_EVENT_SHORT_CLICKED:
         case LV_EVENT_LONG_PRESSED_REPEAT:
             bright_change(+10);
-            break;
-        case LV_EVENT_RELEASED:
-            settings_set_brightness(s_bright);
             break;
         default: break;
     }
@@ -157,8 +187,10 @@ static void theme_apply(void)
 {
     lv_obj_t * scr = theme_screen(s_theme_idx);
     if (scr) {
+        lv_obj_remove_event_cb(s_active_main, to_config_cb);
         s_active_main = scr;
         settings_set_theme(s_theme_idx);
+        lv_obj_add_event_cb(s_active_main, to_config_cb, LV_EVENT_LONG_PRESSED, NULL);
     }
     // not-implemented themes: just shown as a choice, active screen unchanged
 }
@@ -182,6 +214,17 @@ static void theme_next_cb(lv_event_t * e)
 // ----------------------------------------------------------------------------
 // OTA
 // ----------------------------------------------------------------------------
+static lv_obj_t * make_button(lv_obj_t * parent, const char * text, int w, int h);  // defined below
+
+// Leave OTA mode: ask the loop() task to tear the SoftAP down, then remove the
+// overlay (async - we're inside the close button's own event).
+static void ota_close_cb(lv_event_t * e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    ota_request_stop();
+    lv_obj_del_async((lv_obj_t *)lv_event_get_user_data(e));
+}
+
 static void ota_show_info(void)
 {
     lv_obj_t * box = lv_obj_create(lv_layer_top());
@@ -199,9 +242,14 @@ static void ota_show_info(void)
     lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text_fmt(lbl,
-                          "TRYB OTA\n\nWiFi: %s\nHaslo: %s\n\n%s\n\nWgraj plik .bin\nz telefonu",
+                          "TRYB OTA\n\nWiFi: %s\nHaslo: %s\n\n%s\n\nWgraj plik .bin",
                           ota_ssid(), ota_pass(), ota_url());
-    lv_obj_center(lbl);
+    lv_obj_align(lbl, LV_ALIGN_CENTER, 0, -35);
+
+    // Exit OTA: stops the SoftAP + server and removes this overlay.
+    lv_obj_t * close_btn = make_button(box, "Zamknij", 150, 46);
+    lv_obj_align(close_btn, LV_ALIGN_CENTER, 0, 130);
+    lv_obj_add_event_cb(close_btn, ota_close_cb, LV_EVENT_CLICKED, box);
 }
 
 static void ota_button_cb(lv_event_t * e)
@@ -214,7 +262,7 @@ static void ota_button_cb(lv_event_t * e)
 // ----------------------------------------------------------------------------
 // Navigation (long-press toggles between main and config)
 // ----------------------------------------------------------------------------
-static void to_config_cb(lv_event_t * e)
+void to_config_cb(lv_event_t * e)
 {
     if (lv_event_get_code(e) == LV_EVENT_LONG_PRESSED) {
         lv_scr_load_anim(s_config_scr, LV_SCR_LOAD_ANIM_FADE_ON, NAV_ANIM_MS, 0, false);
@@ -224,6 +272,9 @@ static void to_config_cb(lv_event_t * e)
 static void to_main_cb(lv_event_t * e)
 {
     if (lv_event_get_code(e) == LV_EVENT_LONG_PRESSED) {
+        settings_set_multiplier(s_mult);
+        settings_set_speed_multiplier(s_smult);
+        settings_set_brightness(s_bright);
         lv_scr_load_anim(s_active_main, LV_SCR_LOAD_ANIM_FADE_ON, NAV_ANIM_MS, 0, false);
     }
 }
@@ -269,9 +320,15 @@ static lv_obj_t * make_button(lv_obj_t * parent, const char * text, int w, int h
 // ----------------------------------------------------------------------------
 void config_screen_init(void)
 {
+    // --- init additional screens ---
+    ui_SimsonScreen_screen_init();
+
     // --- load persisted settings ---
     s_mult = settings_get_multiplier();
     gauge_set_multiplier(s_mult);
+
+    s_smult = settings_get_speed_multiplier();
+    gauge_set_speed_multiplier(s_smult);
 
     s_theme_idx = settings_get_theme();
     s_active_main = theme_screen(s_theme_idx);
@@ -294,7 +351,9 @@ void config_screen_init(void)
     lv_obj_remove_style_all(col);
     lv_obj_set_width(col, 320);
     lv_obj_set_height(col, LV_SIZE_CONTENT);
-    lv_obj_center(col);
+    // Nudge up: the column nearly fills the panel, so centred it pushes the last
+    // row (OTA) onto the round display's bottom edge where touch is unreliable.
+    lv_obj_align(col, LV_ALIGN_CENTER, 0, -14);
     lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
     lv_obj_set_style_pad_row(col, 8, LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -324,6 +383,23 @@ void config_screen_init(void)
 
     lv_obj_t * btn_plus = make_button(mult_row, "+", 60, 50);
     lv_obj_add_event_cb(btn_plus, mult_plus_cb, LV_EVENT_ALL, NULL);
+
+    // --- speed multiplier ---
+    make_caption(col, "Mnoznik Predkosci");
+    lv_obj_t * smult_row = make_row(col);
+
+    lv_obj_t * btn_sminus = make_button(smult_row, "-", 60, 50);
+    lv_obj_add_event_cb(btn_sminus, smult_minus_cb, LV_EVENT_ALL, NULL);
+
+    s_smult_label = lv_label_create(smult_row);
+    lv_obj_set_width(s_smult_label, 110);
+    lv_obj_set_style_text_align(s_smult_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(s_smult_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(s_smult_label, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    smult_refresh_label();
+
+    lv_obj_t * btn_splus = make_button(smult_row, "+", 60, 50);
+    lv_obj_add_event_cb(btn_splus, smult_plus_cb, LV_EVENT_ALL, NULL);
 
     // --- theme ---
     make_caption(col, "Motyw");
@@ -360,8 +436,10 @@ void config_screen_init(void)
     lv_obj_t * btn_bplus = make_button(bright_row, "+", 60, 50);
     lv_obj_add_event_cb(btn_bplus, bright_plus_cb, LV_EVENT_ALL, NULL);
 
-    // --- OTA --- (spacing comes from the column's pad_row)
-    lv_obj_t * ota_btn = make_button(col, "OTA", 120, 44);
+    // --- OTA --- bigger target + a forgiving touch zone (it sits low on the
+    // round panel, where edge touches jitter and otherwise miss).
+    lv_obj_t * ota_btn = make_button(col, "OTA", 160, 52);
+    lv_obj_set_ext_click_area(ota_btn, 12);
     lv_obj_add_event_cb(ota_btn, ota_button_cb, LV_EVENT_CLICKED, NULL);
 
     // --- navigation: long-press on the (active) main screen opens config ---

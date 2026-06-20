@@ -7,6 +7,7 @@ static Preferences prefs;
 
 #define NS          "motogauge"
 #define KEY_MULT    "mult"
+#define KEY_SPEED_MULT "smult"
 #define KEY_THEME   "theme"
 #define KEY_BRIGHT  "bright"
 
@@ -23,6 +24,16 @@ float settings_get_multiplier(void)
 void settings_set_multiplier(float v)
 {
     prefs.putFloat(KEY_MULT, v);
+}
+
+float settings_get_speed_multiplier(void)
+{
+    return prefs.getFloat(KEY_SPEED_MULT, 1.0f);
+}
+
+void settings_set_speed_multiplier(float v)
+{
+    prefs.putFloat(KEY_SPEED_MULT, v);
 }
 
 int settings_get_theme(void)

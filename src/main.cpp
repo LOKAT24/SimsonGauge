@@ -7,12 +7,13 @@
 #include "settings.h"       // persistent settings (NVS)
 #include "test_signal.h"    // on-board test square wave
 #include "ota.h"            // WiFi SoftAP firmware update
-
 extern "C" {
 #include "mcpwm_frequency.h"   // frequency measurement via MCPWM capture
+#include "mcpwm_speed.h"       // frequency measurement via MCPWM capture (group 1)
 }
 
 #define MCPWM_GPIO 1           // GPIO carrying the signal whose frequency we measure
+#define SPEED_GPIO 3           // GPIO carrying the signal whose speed we measure
 
 void setup()
 {
@@ -23,6 +24,7 @@ void setup()
 
     // Hardware: frequency capture + (optional) on-board test stimulus
     mcpwm_freq_init(MCPWM_GPIO);
+    mcpwm_speed_init(SPEED_GPIO);
     test_signal_start();
 
     // Display + touch + LVGL (starts the LVGL handler task)

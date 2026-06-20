@@ -12,6 +12,10 @@ void  settings_begin(void);
 float settings_get_multiplier(void);
 void  settings_set_multiplier(float v);
 
+/** Speed multiplier (frequency * multiplier = speed). Default 1.0. */
+float settings_get_speed_multiplier(void);
+void  settings_set_speed_multiplier(float v);
+
 /** Active theme index (0 = NFS). Default 0. */
 int   settings_get_theme(void);
 void  settings_set_theme(int t);

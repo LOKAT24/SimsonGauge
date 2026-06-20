@@ -5,6 +5,8 @@
 extern "C" {
 #endif
 
+#include "lvgl.h"
+
 /**
  * @brief Build the (code-defined) config screen and wire navigation.
  *
@@ -15,6 +17,8 @@ extern "C" {
  * Call after ui_init() and while holding the LVGL lock.
  */
 void config_screen_init(void);
+
+void to_config_cb(lv_event_t * e);
 
 #ifdef __cplusplus
 }

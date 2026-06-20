@@ -16,6 +16,7 @@
 
 static WebServer      server(80);
 static volatile bool  s_requested = false;
+static volatile bool  s_stop_requested = false;
 static bool           s_started   = false;
 
 const char * ota_ssid(void) { return OTA_AP_SSID; }
@@ -23,6 +24,7 @@ const char * ota_pass(void) { return OTA_AP_PASS; }
 const char * ota_url(void)  { return OTA_URL_STR; }
 bool ota_is_active(void)    { return s_started; }
 void ota_request(void)      { s_requested = true; }
+void ota_request_stop(void) { s_stop_requested = true; }
 
 static const char UPLOAD_PAGE[] PROGMEM =
     "<!doctype html><html><head>"
@@ -88,8 +90,24 @@ static void ota_start(void)
     s_started = true;
 }
 
+// Tear down the SoftAP + server and release the WiFi driver memory. Runs from
+// the loop() task only (never from the LVGL task) to avoid racing handleClient().
+static void ota_stop(void)
+{
+    server.stop();
+    WiFi.softAPdisconnect(true);
+    WiFi.mode(WIFI_OFF);
+    s_started   = false;
+    s_requested = false;
+}
+
 void ota_loop(void)
 {
+    if (s_stop_requested) {
+        s_stop_requested = false;
+        if (s_started) ota_stop();
+        return;
+    }
     if (s_requested && !s_started) {
         ota_start();
     }

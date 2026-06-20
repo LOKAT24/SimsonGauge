@@ -15,6 +15,13 @@ extern "C" {
  */
 void ota_request(void);
 
+/**
+ * @brief Request leaving OTA mode (safe to call from the LVGL task).
+ *
+ * The SoftAP + web server are actually torn down from ota_loop() (loop() task).
+ */
+void ota_request_stop(void);
+
 /** @brief Pump the OTA web server. Call from loop(). */
 void ota_loop(void);
 
