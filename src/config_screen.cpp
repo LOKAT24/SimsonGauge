@@ -29,6 +29,12 @@ static const char * THEME_NAMES[THEME_COUNT] = {
     "NFS", "Simson Clasic", "Simson Clasic Night"
 };
 
+// ----------------------------------------------------------------------------
+// Measurement algorithm (0 = A: ISR/period, 1 = B: edge buffer)
+// ----------------------------------------------------------------------------
+#define ALGO_COUNT 2
+static const char * ALGO_NAMES[ALGO_COUNT] = { "ISR (A)", "Bufor (B)" };
+
 // Map a theme index to its main screen, or NULL if not implemented yet.
 // When you add the Simson screens in SquareLine, return them here.
 static lv_obj_t * theme_screen(int idx)
@@ -56,11 +62,13 @@ static lv_obj_t * s_mult_label  = NULL;
 static lv_obj_t * s_smult_label = NULL;
 static lv_obj_t * s_theme_label = NULL;
 static lv_obj_t * s_bright_label = NULL;
+static lv_obj_t * s_algo_label  = NULL;
 
 static float s_mult      = 1.0f;
 static float s_smult     = 1.0f;
 static int   s_theme_idx = 0;
 static int   s_bright    = 100;
+static int   s_algo_idx  = 0;
 
 // ----------------------------------------------------------------------------
 // Multiplier
@@ -169,6 +177,23 @@ static void bright_plus_cb(lv_event_t * e)
             break;
         default: break;
     }
+}
+
+// ----------------------------------------------------------------------------
+// Measurement algorithm toggle
+// ----------------------------------------------------------------------------
+static void algo_refresh_label(void)
+{
+    lv_label_set_text(s_algo_label, ALGO_NAMES[s_algo_idx]);
+}
+
+static void algo_toggle_cb(lv_event_t * e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    s_algo_idx = (s_algo_idx + 1) % ALGO_COUNT;
+    algo_refresh_label();
+    gauge_set_algorithm(s_algo_idx);    // przelacz w locie
+    settings_set_algorithm(s_algo_idx); // i zapamietaj
 }
 
 // ----------------------------------------------------------------------------
@@ -339,6 +364,10 @@ void config_screen_init(void)
 
     s_bright = settings_get_brightness();
 
+    s_algo_idx = settings_get_algorithm();
+    if (s_algo_idx < 0 || s_algo_idx >= ALGO_COUNT) s_algo_idx = 0;
+    gauge_set_algorithm(s_algo_idx);
+
     // --- screen ---
     s_config_scr = lv_obj_create(NULL);
     lv_obj_set_style_bg_color(s_config_scr, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
@@ -435,6 +464,12 @@ void config_screen_init(void)
 
     lv_obj_t * btn_bplus = make_button(bright_row, "+", 60, 50);
     lv_obj_add_event_cb(btn_bplus, bright_plus_cb, LV_EVENT_ALL, NULL);
+
+    // --- measurement algorithm toggle ---
+    make_caption(col, "Algorytm pomiaru");
+    lv_obj_t * algo_btn = make_button(col, ALGO_NAMES[s_algo_idx], 200, 50);
+    s_algo_label = lv_obj_get_child(algo_btn, 0);   // label created inside make_button
+    lv_obj_add_event_cb(algo_btn, algo_toggle_cb, LV_EVENT_CLICKED, NULL);
 
     // --- OTA --- bigger target + a forgiving touch zone (it sits low on the
     // round panel, where edge touches jitter and otherwise miss).

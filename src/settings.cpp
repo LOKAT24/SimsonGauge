@@ -10,6 +10,7 @@ static Preferences prefs;
 #define KEY_SPEED_MULT "smult"
 #define KEY_THEME   "theme"
 #define KEY_BRIGHT  "bright"
+#define KEY_ALGO    "algo"
 
 void settings_begin(void)
 {
@@ -54,4 +55,14 @@ int settings_get_brightness(void)
 void settings_set_brightness(int b)
 {
     prefs.putInt(KEY_BRIGHT, b);
+}
+
+int settings_get_algorithm(void)
+{
+    return prefs.getInt(KEY_ALGO, 0);
+}
+
+void settings_set_algorithm(int a)
+{
+    prefs.putInt(KEY_ALGO, a);
 }

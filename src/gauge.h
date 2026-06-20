@@ -22,6 +22,9 @@ void gauge_set_multiplier(double m);
 
 void gauge_set_speed_multiplier(float sm);
 
+/** Select the frequency-measurement algorithm (0 = A: ISR/period, 1 = B: edge buffer). */
+void gauge_set_algorithm(int algo);
+
 extern bool g_simson_intro_done;
 
 #ifdef __cplusplus

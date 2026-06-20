@@ -22,4 +22,15 @@ esp_err_t mcpwm_speed_init(int gpio_num);
  */
 double mcpwm_speed_get_hz(void);
 
+/**
+ * @brief Wybiera algorytm pomiaru (mozna przelaczac w locie).
+ *
+ * @param algo 0 = Algorytm A (pomiar okresu w ISR + filtr medianowy),
+ *             1 = Algorytm B (bufor zboczy + filtr medianowy).
+ */
+void mcpwm_speed_set_algorithm(int algo);
+
+/** @return Aktualnie wybrany algorytm (0 = A, 1 = B). */
+int mcpwm_speed_get_algorithm(void);
+
 #endif // MCPWM_SPEED_H

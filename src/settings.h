@@ -24,6 +24,10 @@ void  settings_set_theme(int t);
 int   settings_get_brightness(void);
 void  settings_set_brightness(int b);
 
+/** Measurement algorithm (0 = A: ISR/period, 1 = B: edge buffer). Default 0. */
+int   settings_get_algorithm(void);
+void  settings_set_algorithm(int a);
+
 #ifdef __cplusplus
 }
 #endif

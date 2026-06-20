@@ -28,6 +28,12 @@ void gauge_set_speed_multiplier(float sm)
     s_speed_mult = sm;
 }
 
+void gauge_set_algorithm(int algo)
+{
+    mcpwm_freq_set_algorithm(algo);
+    mcpwm_speed_set_algorithm(algo);
+}
+
 /**
  * Convert RPM to the needle angle using a fixed-point (2^32) Horner polynomial.
  * f(x) = -0.0000000009463277 x^3 + 0.0000135123083132 x^2 + 0.2731027037933820 x + 6.0
