@@ -250,8 +250,8 @@ static void ota_show_info(void)
     lv_obj_set_style_text_color(lbl, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(lbl, &lv_font_montserrat_18, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_label_set_text_fmt(lbl,
-                          "TRYB OTA\n\nWiFi: %s\nHaslo: %s\n\n%s\n\nWgraj plik .bin",
-                          ota_ssid(), ota_pass(), ota_url());
+                          "TRYB OTA\nWersja: %s\n\nWiFi: %s\nHaslo: %s\n\n%s\n\nWgraj plik .bin",
+                          FW_VERSION, ota_ssid(), ota_pass(), ota_url());
     lv_obj_align(lbl, LV_ALIGN_CENTER, 0, -35);
 
     // Exit OTA: stops the SoftAP + server and removes this overlay.

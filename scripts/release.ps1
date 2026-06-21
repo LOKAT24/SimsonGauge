@@ -4,15 +4,20 @@
   Buduje firmware i tworzy wersjonowany "wklad do procka" (firmware.bin).
 
 .DESCRIPTION
-  1. Buduje projekt PlatformIO (pio run).
-  2. Kopiuje firmware.bin do  release\MotoGauge_<wersja>.bin  -- gotowe do OTA.
-  3. Tworzy tag git <wersja>.
+  1. Tworzy tag git <wersja> (przed buildem, by wersja trafila do firmware).
+  2. Buduje projekt PlatformIO (pio run).
+  3. Kopiuje dwa pliki do release\:
+       MotoGauge_<wersja>.bin       - sama aplikacja, do OTA
+       MotoGauge_<wersja>_full.bin  - scalony obraz (bootloader+partycje+app),
+                                      do wgrania programatorem na czysty uklad.
   4. Jesli masz gh CLI + remote na GitHubie: pushuje tag i tworzy GitHub Release
-     z dolaczonym firmware.bin. W przeciwnym razie zostawia plik lokalnie i
-     mowi, czego brakuje do publikacji.
+     z oboma plikami. W przeciwnym razie zostawia je lokalnie i mowi, czego
+     brakuje do publikacji.
 
-  Firmware.bin to sama partycja aplikacji - dokladnie to, co przyjmuje Twoj
-  OTA (Update.write w src/ota.cpp). Nie trzeba mergowac z bootloaderem.
+  - firmware.bin to sama partycja aplikacji - to przyjmuje Twoj OTA
+    (Update.write w src/ota.cpp); wgrywany "na zywo" na dzialajace urzadzenie.
+  - firmware.factory.bin to caly obraz flash pod adres 0x0 - dla czystego ESP32
+    przez esptool:  esptool.py write_flash 0x0 MotoGauge_<wersja>_full.bin
 
 .EXAMPLE
   .\scripts\release.ps1 v1.0.0
@@ -33,9 +38,11 @@ if ($Version -notmatch '^v\d+\.\d+\.\d+$') {
 
 Push-Location $Repo
 try {
-    $BinSrc = ".pio\build\$EnvName\firmware.bin"
-    $RelDir = "release"
-    $BinDst = "$RelDir\MotoGauge_$Version.bin"
+    $BinSrc     = ".pio\build\$EnvName\firmware.bin"
+    $FactorySrc = ".pio\build\$EnvName\firmware.factory.bin"
+    $RelDir     = "release"
+    $BinDst     = "$RelDir\MotoGauge_$Version.bin"
+    $FullDst    = "$RelDir\MotoGauge_${Version}_full.bin"
 
     # --- znajdz pio (PATH, a jak nie ma to penv PlatformIO) ---
     $pio = (Get-Command pio -ErrorAction SilentlyContinue).Source
@@ -69,13 +76,17 @@ try {
         }
         throw "Build nie powiodl sie (pio run exit $LASTEXITCODE)."
     }
-    if (-not (Test-Path $BinSrc)) { throw "Brak $BinSrc po buildzie." }
+    if (-not (Test-Path $BinSrc))     { throw "Brak $BinSrc po buildzie." }
+    if (-not (Test-Path $FactorySrc)) { throw "Brak $FactorySrc po buildzie." }
 
-    # --- wersjonowany bin gotowy do OTA ---
+    # --- wersjonowane pliki: app (OTA) + scalony obraz (programator) ---
     New-Item -ItemType Directory -Force -Path $RelDir | Out-Null
-    Copy-Item $BinSrc $BinDst -Force
-    $kb = [math]::Round((Get-Item $BinDst).Length / 1KB)
-    Write-Host "==> Plik OTA gotowy: $BinDst ($kb KB)" -ForegroundColor Green
+    Copy-Item $BinSrc     $BinDst  -Force
+    Copy-Item $FactorySrc $FullDst -Force
+    $kbApp  = [math]::Round((Get-Item $BinDst).Length  / 1KB)
+    $kbFull = [math]::Round((Get-Item $FullDst).Length / 1KB)
+    Write-Host "==> Plik OTA (app):       $BinDst  ($kbApp KB)"  -ForegroundColor Green
+    Write-Host "==> Plik pelny (0x0):     $FullDst ($kbFull KB)" -ForegroundColor Green
 
     # --- publikacja na GitHub (jesli skonfigurowane) ---
     $gh        = (Get-Command gh -ErrorAction SilentlyContinue).Source
@@ -84,12 +95,14 @@ try {
     if ($gh -and $hasRemote) {
         Write-Host "==> Publikuje Release na GitHubie..." -ForegroundColor Cyan
         git push origin $Version
-        & $gh release create $Version $BinDst --title $Version --generate-notes
+        & $gh release create $Version $BinDst $FullDst --title $Version --generate-notes
         if ($LASTEXITCODE -ne 0) { throw "gh release create exit $LASTEXITCODE." }
         Write-Host "==> Release $Version opublikowany." -ForegroundColor Green
     } else {
         Write-Host ""
-        Write-Host "Firmware gotowy lokalnie: $BinDst" -ForegroundColor Yellow
+        Write-Host "Pliki gotowe lokalnie:" -ForegroundColor Yellow
+        Write-Host "  $BinDst   (OTA / aktualizacja)" -ForegroundColor Yellow
+        Write-Host "  $FullDst  (programator / czysty uklad, write_flash 0x0)" -ForegroundColor Yellow
         Write-Host "Aby publikowac na GitHub Releases (konfiguracja jednorazowa):" -ForegroundColor Yellow
         if (-not $hasRemote) { Write-Host "  - utworz repo na GitHubie i:  git remote add origin <URL>" }
         if (-not $gh)        { Write-Host "  - zainstaluj gh:  winget install GitHub.cli   (potem: gh auth login)" }
