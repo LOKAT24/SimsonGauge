@@ -1,10 +1,14 @@
 // Code-defined configuration screen (no longer maintained in SquareLine).
 //
 // Contents:
-//   - RPM multiplier with -/+ buttons (tap = +-0.1, hold = +-1.0), persisted.
 //   - Theme selector (whole main screens): NFS / Simson Clasic / Simson Clasic
 //     Night. Only NFS exists today; the others are listed as "(wkrotce)" and
 //     become active once their screens are added (see theme_screen()).
+//   - Brightness slider, persisted.
+//   - "Pomiar" button: opens a popup (like the OTA overlay) holding the RPM
+//     multiplier, speed multiplier and measurement-algorithm controls. These
+//     were moved off the main config screen because they no longer fit on the
+//     round panel.
 //   - OTA button.
 //   - Long-press on an empty area returns to the active main screen.
 
@@ -15,6 +19,7 @@
 #include "ota.h"
 #include "lcd_bsp.h"
 #include "ui_SimsonScreen.h"
+#include "version.h"
 
 // LVGL's LV_PART_* | LV_STATE_* macros mix two enums; in C++ that triggers a
 // deprecation warning on every style call. The generated UI (.c) files don't
@@ -141,42 +146,20 @@ static void smult_plus_cb(lv_event_t * e)
 }
 
 // ----------------------------------------------------------------------------
-// Brightness
+// Brightness (slider)
 // ----------------------------------------------------------------------------
 static void bright_refresh_label(void)
 {
     lv_label_set_text_fmt(s_bright_label, "%d%%", s_bright);
 }
 
-static void bright_change(int delta)
+static void bright_slider_cb(lv_event_t * e)
 {
-    s_bright += delta;
-    if (s_bright < 10) s_bright = 10;
-    if (s_bright > 100) s_bright = 100;
+    if (lv_event_get_code(e) != LV_EVENT_VALUE_CHANGED) return;
+    lv_obj_t * slider = lv_event_get_target(e);
+    s_bright = lv_slider_get_value(slider);
     bright_refresh_label();
     lcd_set_brightness(s_bright * 255 / 100);
-}
-
-static void bright_minus_cb(lv_event_t * e)
-{
-    switch (lv_event_get_code(e)) {
-        case LV_EVENT_SHORT_CLICKED:
-        case LV_EVENT_LONG_PRESSED_REPEAT:
-            bright_change(-10);
-            break;
-        default: break;
-    }
-}
-
-static void bright_plus_cb(lv_event_t * e)
-{
-    switch (lv_event_get_code(e)) {
-        case LV_EVENT_SHORT_CLICKED:
-        case LV_EVENT_LONG_PRESSED_REPEAT:
-            bright_change(+10);
-            break;
-        default: break;
-    }
 }
 
 // ----------------------------------------------------------------------------
@@ -341,6 +324,103 @@ static lv_obj_t * make_button(lv_obj_t * parent, const char * text, int w, int h
 }
 
 // ----------------------------------------------------------------------------
+// Measurement settings popup (RPM mult / speed mult / algorithm)
+//
+// Opened by a button on the config screen, mirroring the OTA info overlay: a
+// circular box on lv_layer_top() that we delete on "Zamknij". Moving these rows
+// off the config screen keeps it from overflowing the round panel.
+// ----------------------------------------------------------------------------
+static void meas_close_cb(lv_event_t * e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    // persist measurement settings on close
+    settings_set_multiplier(s_mult);
+    settings_set_speed_multiplier(s_smult);
+    // labels live inside the overlay we're about to delete; drop the pointers
+    s_mult_label  = NULL;
+    s_smult_label = NULL;
+    s_algo_label  = NULL;
+    lv_obj_del_async((lv_obj_t *)lv_event_get_user_data(e));
+}
+
+static void meas_show(void)
+{
+    lv_obj_t * box = lv_obj_create(lv_layer_top());
+    lv_obj_set_size(box, 440, 440);
+    lv_obj_center(box);
+    lv_obj_set_style_radius(box, 220, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_color(box, lv_color_hex(0x000000), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_bg_opa(box, 255, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_clear_flag(box, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t * col = lv_obj_create(box);
+    lv_obj_remove_style_all(col);
+    lv_obj_set_width(col, 320);
+    lv_obj_set_height(col, LV_SIZE_CONTENT);
+    lv_obj_center(col);
+    lv_obj_set_flex_flow(col, LV_FLEX_FLOW_COLUMN);
+    lv_obj_set_flex_align(col, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+    lv_obj_set_style_pad_row(col, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_clear_flag(col, LV_OBJ_FLAG_SCROLLABLE);
+
+    lv_obj_t * title = lv_label_create(col);
+    lv_label_set_text(title, "POMIAR");
+    lv_obj_set_style_text_color(title, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(title, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_pad_bottom(title, 4, LV_PART_MAIN | LV_STATE_DEFAULT);
+
+    // --- multiplier ---
+    make_caption(col, "Mnoznik RPM");
+    lv_obj_t * mult_row = make_row(col);
+
+    lv_obj_t * btn_minus = make_button(mult_row, "-", 60, 50);
+    lv_obj_add_event_cb(btn_minus, mult_minus_cb, LV_EVENT_ALL, NULL);
+
+    s_mult_label = lv_label_create(mult_row);
+    lv_obj_set_width(s_mult_label, 110);
+    lv_obj_set_style_text_align(s_mult_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(s_mult_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(s_mult_label, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    mult_refresh_label();
+
+    lv_obj_t * btn_plus = make_button(mult_row, "+", 60, 50);
+    lv_obj_add_event_cb(btn_plus, mult_plus_cb, LV_EVENT_ALL, NULL);
+
+    // --- speed multiplier ---
+    make_caption(col, "Mnoznik Predkosci");
+    lv_obj_t * smult_row = make_row(col);
+
+    lv_obj_t * btn_sminus = make_button(smult_row, "-", 60, 50);
+    lv_obj_add_event_cb(btn_sminus, smult_minus_cb, LV_EVENT_ALL, NULL);
+
+    s_smult_label = lv_label_create(smult_row);
+    lv_obj_set_width(s_smult_label, 110);
+    lv_obj_set_style_text_align(s_smult_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_color(s_smult_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(s_smult_label, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
+    smult_refresh_label();
+
+    lv_obj_t * btn_splus = make_button(smult_row, "+", 60, 50);
+    lv_obj_add_event_cb(btn_splus, smult_plus_cb, LV_EVENT_ALL, NULL);
+
+    // --- measurement algorithm toggle ---
+    make_caption(col, "Algorytm pomiaru");
+    lv_obj_t * algo_btn = make_button(col, ALGO_NAMES[s_algo_idx], 200, 50);
+    s_algo_label = lv_obj_get_child(algo_btn, 0);   // label created inside make_button
+    lv_obj_add_event_cb(algo_btn, algo_toggle_cb, LV_EVENT_CLICKED, NULL);
+
+    // close + persist
+    lv_obj_t * close_btn = make_button(col, "Zamknij", 150, 46);
+    lv_obj_add_event_cb(close_btn, meas_close_cb, LV_EVENT_CLICKED, box);
+}
+
+static void meas_button_cb(lv_event_t * e)
+{
+    if (lv_event_get_code(e) != LV_EVENT_CLICKED) return;
+    meas_show();
+}
+
+// ----------------------------------------------------------------------------
 // Build
 // ----------------------------------------------------------------------------
 void config_screen_init(void)
@@ -396,40 +476,6 @@ void config_screen_init(void)
     lv_obj_set_style_text_font(title, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_pad_bottom(title, 6, LV_PART_MAIN | LV_STATE_DEFAULT);
 
-    // --- multiplier ---
-    make_caption(col, "Mnoznik RPM");
-    lv_obj_t * mult_row = make_row(col);
-
-    lv_obj_t * btn_minus = make_button(mult_row, "-", 60, 50);
-    lv_obj_add_event_cb(btn_minus, mult_minus_cb, LV_EVENT_ALL, NULL);
-
-    s_mult_label = lv_label_create(mult_row);
-    lv_obj_set_width(s_mult_label, 110);
-    lv_obj_set_style_text_align(s_mult_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(s_mult_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(s_mult_label, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
-    mult_refresh_label();
-
-    lv_obj_t * btn_plus = make_button(mult_row, "+", 60, 50);
-    lv_obj_add_event_cb(btn_plus, mult_plus_cb, LV_EVENT_ALL, NULL);
-
-    // --- speed multiplier ---
-    make_caption(col, "Mnoznik Predkosci");
-    lv_obj_t * smult_row = make_row(col);
-
-    lv_obj_t * btn_sminus = make_button(smult_row, "-", 60, 50);
-    lv_obj_add_event_cb(btn_sminus, smult_minus_cb, LV_EVENT_ALL, NULL);
-
-    s_smult_label = lv_label_create(smult_row);
-    lv_obj_set_width(s_smult_label, 110);
-    lv_obj_set_style_text_align(s_smult_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_color(s_smult_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
-    lv_obj_set_style_text_font(s_smult_label, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
-    smult_refresh_label();
-
-    lv_obj_t * btn_splus = make_button(smult_row, "+", 60, 50);
-    lv_obj_add_event_cb(btn_splus, smult_plus_cb, LV_EVENT_ALL, NULL);
-
     // --- theme ---
     make_caption(col, "Motyw");
     lv_obj_t * theme_row = make_row(col);
@@ -448,34 +494,41 @@ void config_screen_init(void)
     lv_obj_t * btn_next = make_button(theme_row, ">", 50, 44);
     lv_obj_add_event_cb(btn_next, theme_next_cb, LV_EVENT_CLICKED, NULL);
 
-    // --- brightness ---
+    // --- brightness (slider) ---
     make_caption(col, "Jasnosc ekranu");
-    lv_obj_t * bright_row = make_row(col);
 
-    lv_obj_t * btn_bminus = make_button(bright_row, "-", 60, 50);
-    lv_obj_add_event_cb(btn_bminus, bright_minus_cb, LV_EVENT_ALL, NULL);
-
-    s_bright_label = lv_label_create(bright_row);
-    lv_obj_set_width(s_bright_label, 110);
+    s_bright_label = lv_label_create(col);
     lv_obj_set_style_text_align(s_bright_label, LV_TEXT_ALIGN_CENTER, LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_color(s_bright_label, lv_color_hex(0xFFFFFF), LV_PART_MAIN | LV_STATE_DEFAULT);
     lv_obj_set_style_text_font(s_bright_label, &lv_font_montserrat_24, LV_PART_MAIN | LV_STATE_DEFAULT);
     bright_refresh_label();
 
-    lv_obj_t * btn_bplus = make_button(bright_row, "+", 60, 50);
-    lv_obj_add_event_cb(btn_bplus, bright_plus_cb, LV_EVENT_ALL, NULL);
+    lv_obj_t * bright_slider = lv_slider_create(col);
+    lv_obj_set_width(bright_slider, 240);
+    lv_slider_set_range(bright_slider, 10, 100);
+    lv_slider_set_value(bright_slider, s_bright, LV_ANIM_OFF);
+    lv_obj_add_event_cb(bright_slider, bright_slider_cb, LV_EVENT_VALUE_CHANGED, NULL);
 
-    // --- measurement algorithm toggle ---
-    make_caption(col, "Algorytm pomiaru");
-    lv_obj_t * algo_btn = make_button(col, ALGO_NAMES[s_algo_idx], 200, 50);
-    s_algo_label = lv_obj_get_child(algo_btn, 0);   // label created inside make_button
-    lv_obj_add_event_cb(algo_btn, algo_toggle_cb, LV_EVENT_CLICKED, NULL);
+    // --- measurement settings (RPM/speed multiplier + algorithm) in a popup ---
+    make_caption(col, "Pomiar");
+    lv_obj_t * meas_btn = make_button(col, "Ustawienia pomiaru", 220, 50);
+    lv_obj_add_event_cb(meas_btn, meas_button_cb, LV_EVENT_CLICKED, NULL);
 
     // --- OTA --- bigger target + a forgiving touch zone (it sits low on the
     // round panel, where edge touches jitter and otherwise miss).
     lv_obj_t * ota_btn = make_button(col, "OTA", 160, 52);
     lv_obj_set_ext_click_area(ota_btn, 12);
     lv_obj_add_event_cb(ota_btn, ota_button_cb, LV_EVENT_CLICKED, NULL);
+
+    // --- firmware version footer ---
+    // Dim, non-interactive label pinned to the bottom of the config screen (not
+    // in the column). FW_VERSION comes from the git tag at build time (version.h).
+    // A plain label isn't clickable, so it doesn't block the screen's long-press.
+    lv_obj_t * ver_label = lv_label_create(s_config_scr);
+    lv_label_set_text(ver_label, FW_VERSION);
+    lv_obj_set_style_text_color(ver_label, lv_color_hex(0x666666), LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_set_style_text_font(ver_label, &lv_font_montserrat_14, LV_PART_MAIN | LV_STATE_DEFAULT);
+    lv_obj_align(ver_label, LV_ALIGN_BOTTOM_MID, 0, -22);
 
     // --- navigation: long-press on the (active) main screen opens config ---
     lv_obj_add_event_cb(s_active_main, to_config_cb, LV_EVENT_LONG_PRESSED, NULL);

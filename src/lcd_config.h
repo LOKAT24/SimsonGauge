@@ -20,7 +20,17 @@
 // the OTA SoftAP then crashes in ieee80211_hostap_attach (LoadProhibited on a
 // failed allocation). V_RES/10 (~86 KB total) frees ~130 KB for WiFi; the image is
 // unchanged, only flushed in more, smaller chunks (negligible for this UI).
-#define EXAMPLE_LVGL_BUF_HEIGHT        (EXAMPLE_LCD_V_RES / 10)
+//
+// NB: full-screen double buffering in PSRAM was tried and does NOT work on this
+// panel: the SPI driver cannot DMA straight from PSRAM, it allocates an equally
+// large internal "priv" TX buffer and a whole 466x466 frame (~434 KB) does not
+// fit in internal RAM (setup_dma_priv_buffer fails -> black screen).
+//
+// Anti-tearing: taller buffers mean the moving area (needle) is flushed in fewer
+// horizontal bands, so fewer visible seams. V_RES/6 (two buffers ~143 KB) is a
+// compromise that still leaves room for WiFi/OTA. If the OTA SoftAP starts
+// crashing again (too little internal RAM), step this back toward V_RES/8 or /10.
+#define EXAMPLE_LVGL_BUF_HEIGHT        (EXAMPLE_LCD_V_RES / 6)
 #define EXAMPLE_LVGL_TICK_PERIOD_MS    2                          //Timer time
 #define EXAMPLE_LVGL_TASK_MAX_DELAY_MS 500                        //LVGL Indicates the maximum time for a task to run
 #define EXAMPLE_LVGL_TASK_MIN_DELAY_MS 1                          //LVGL Minimum time to run a task

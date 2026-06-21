@@ -6,3 +6,6 @@
 .vscode/launch.json
 .vscode/ipch
 compile_commands.json
+
+# Lokalnie budowane binarki firmware - dystrybuowane przez GitHub Releases, nie przez repo
+release/

@@ -99,7 +99,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .cs_gpio_num = cs,                                      \
         .dc_gpio_num = -1,                                      \
         .spi_mode = 0,                                          \
-        .pclk_hz = 40 * 1000 * 1000,                            \
+        .pclk_hz = 80 * 1000 * 1000,  /* 40->80 MHz: o polowe krotszy zapis = mniej tearingu. Zmniejsz do 60/40, jesli obraz szumi/znika. */ \
         .trans_queue_depth = 10,                                \
         .on_color_trans_done = cb,                              \
         .user_ctx = cb_ctx,                                     \
